@@ -1,10 +1,16 @@
 package com.elyeproj.animationphysics
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.AccelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.dynamicanimation.animation.DynamicAnimation
@@ -16,15 +22,9 @@ import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
-    private val springForceX: SpringForce by lazy(LazyThreadSafetyMode.NONE) {
-        SpringForce(0f).apply {
-            stiffness = SpringForce.STIFFNESS_LOW
-            dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
-        }
-    }
-
-    private val springForceY: SpringForce by lazy(LazyThreadSafetyMode.NONE) {
-        SpringForce(0f).apply {
+    private val springForce: SpringForce
+    get() {
+        return SpringForce(0f).apply {
             stiffness = SpringForce.STIFFNESS_LOW
             dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
         }
@@ -33,34 +33,34 @@ class MainActivity : AppCompatActivity() {
     private val maxWidth by lazy { container.width.toFloat() - img_ball.width }
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
 
-    private val springAnimationX: SpringAnimation by lazy(LazyThreadSafetyMode.NONE) {
+    private val springAnimationX: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.X).addEndListener { animation, canceled, value, velocity ->
             endCheck()
         }
     }
 
-    private val springAnimationY: SpringAnimation by lazy(LazyThreadSafetyMode.NONE) {
+    private val springAnimationY: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.Y).addEndListener { animation, canceled, value, velocity ->
             endCheck()
         }
     }
 
-    private val flingAnimationX: FlingAnimation by lazy(LazyThreadSafetyMode.NONE) {
+    private val flingAnimationX: FlingAnimation by lazy {
         FlingAnimation(img_ball, DynamicAnimation.X).setFriction(1.1f).apply {
             setMinValue(0f)
             setMaxValue(maxWidth)
             addEndListener { animation, canceled, value, velocity ->
-                startStringAnimation(velocity, springAnimationX, springForceX, maxWidth)
+                startStringAnimation(velocity, springAnimationX, springForce, maxWidth)
             }
         }
     }
 
-    private val flingAnimationY: FlingAnimation by lazy(LazyThreadSafetyMode.NONE) {
+    private val flingAnimationY: FlingAnimation by lazy {
         FlingAnimation(img_ball, DynamicAnimation.Y).setFriction(1.1f).apply {
             setMinValue(0f)
             setMaxValue(maxHeight)
             addEndListener { animation, canceled, value, velocity ->
-                startStringAnimation(velocity, springAnimationY, springForceY, maxHeight)
+                startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
             }
         }
     }
@@ -80,7 +80,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun endCheck() {
         if (isAnimationRunning()) return
-        Toast.makeText(this, "${img_ball.x} ${img_ball.y}", Toast.LENGTH_SHORT).show()
+        if (((img_ball.x >= img_droid.x && img_ball.x <= img_droid.x + img_droid.width) ||
+                (img_ball.x + img_ball.width >= img_droid.x && img_ball.x + img_ball.width <= img_droid.x + img_droid.width)) &&
+            ((img_ball.y >= img_droid.y && img_ball.y <= img_droid.y + img_droid.height) ||
+                (img_ball.y + img_ball.height >= img_droid.y && img_ball.y + img_ball.height <= img_droid.y + img_droid.height))) {
+
+            AnimatorSet().apply {
+                play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
+                    .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
+                    .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
+                    ObjectAnimator.ofPropertyValuesHolder(img_ball,
+                        PropertyValuesHolder.ofFloat(View.X, img_droid.x),
+                        PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
+            }.start()
+        }
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {

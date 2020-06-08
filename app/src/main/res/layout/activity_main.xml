@@ -8,6 +8,17 @@
     tools:context=".MainActivity">
 
     <ImageView
+        android:id="@+id/img_droid"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/ic_launcher_background"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <ImageView
         android:id="@+id/img_ball"
         android:layout_width="50dp"
         android:layout_height="50dp"
