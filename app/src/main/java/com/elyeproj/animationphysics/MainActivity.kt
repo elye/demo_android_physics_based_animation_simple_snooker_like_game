@@ -36,12 +36,20 @@ class MainActivity : AppCompatActivity() {
     private val springAnimationX: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.X).addEndListener { animation, canceled, value, velocity ->
             endCheck()
+        }.apply {
+            addUpdateListener { animation, value, velocity ->
+                endCheck()
+            }
         }
     }
 
     private val springAnimationY: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.Y).addEndListener { animation, canceled, value, velocity ->
             endCheck()
+        }.apply {
+            addUpdateListener { animation, value, velocity ->
+                endCheck()
+            }
         }
     }
 
@@ -52,6 +60,9 @@ class MainActivity : AppCompatActivity() {
             addEndListener { animation, canceled, value, velocity ->
                 startStringAnimation(velocity, springAnimationX, springForce, maxWidth)
             }
+            addUpdateListener { animation, value, velocity ->
+                endCheck()
+            }
         }
     }
 
@@ -61,6 +72,9 @@ class MainActivity : AppCompatActivity() {
             setMaxValue(maxHeight)
             addEndListener { animation, canceled, value, velocity ->
                 startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
+            }
+            addUpdateListener { animation, value, velocity ->
+                endCheck()
             }
         }
     }
@@ -78,12 +92,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    var isEnding = false
+
     private fun endCheck() {
-        if (isAnimationRunning()) return
+        //if (isAnimationRunning()) return
+        if (isEnding) return
+
         if (((img_ball.x >= img_droid.x && img_ball.x <= img_droid.x + img_droid.width) ||
                 (img_ball.x + img_ball.width >= img_droid.x && img_ball.x + img_ball.width <= img_droid.x + img_droid.width)) &&
             ((img_ball.y >= img_droid.y && img_ball.y <= img_droid.y + img_droid.height) ||
                 (img_ball.y + img_ball.height >= img_droid.y && img_ball.y + img_ball.height <= img_droid.y + img_droid.height))) {
+
+            Log.d("Elisha", "I am here")
+            isEnding = true
+            endAllPhysicAnimation()
+
 
             AnimatorSet().apply {
                 play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
@@ -94,6 +117,7 @@ class MainActivity : AppCompatActivity() {
                         PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
             }.start()
         }
+
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
@@ -126,6 +150,14 @@ class MainActivity : AppCompatActivity() {
             true
         }
     }
+
+    private fun endAllPhysicAnimation() {
+        springAnimationX.cancel()
+        springAnimationY.cancel()
+        flingAnimationY.friction = 5f
+        flingAnimationX.friction = 5f
+    }
+
 
     internal fun isAnimationRunning() = (springAnimationX.isRunning || springAnimationY.isRunning
         || flingAnimationX.isRunning || flingAnimationY.isRunning)
