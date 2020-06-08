@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.FlingAnimation
@@ -33,11 +34,15 @@ class MainActivity : AppCompatActivity() {
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
 
     private val springAnimationX: SpringAnimation by lazy(LazyThreadSafetyMode.NONE) {
-        SpringAnimation(img_ball, DynamicAnimation.X)
+        SpringAnimation(img_ball, DynamicAnimation.X).addEndListener { animation, canceled, value, velocity ->
+            endCheck()
+        }
     }
 
     private val springAnimationY: SpringAnimation by lazy(LazyThreadSafetyMode.NONE) {
-        SpringAnimation(img_ball, DynamicAnimation.Y)
+        SpringAnimation(img_ball, DynamicAnimation.Y).addEndListener { animation, canceled, value, velocity ->
+            endCheck()
+        }
     }
 
     private val flingAnimationX: FlingAnimation by lazy(LazyThreadSafetyMode.NONE) {
@@ -68,7 +73,14 @@ class MainActivity : AppCompatActivity() {
                     if (velocity > 0) max else 0f))
                 .setStartVelocity(velocity)
                 .start()
+        } else {
+            endCheck()
         }
+    }
+
+    private fun endCheck() {
+        if (isAnimationRunning()) return
+        Toast.makeText(this, "${img_ball.x} ${img_ball.y}", Toast.LENGTH_SHORT).show()
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
