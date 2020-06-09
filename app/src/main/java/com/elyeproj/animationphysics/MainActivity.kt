@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.FlingAnimation
@@ -41,6 +42,10 @@ class MainActivity : AppCompatActivity() {
 
     private val maxWidth by lazy { container.width.toFloat() - img_ball.width }
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
+
+    private val holes by lazy {
+        listOf(img_hole1, img_hole2, img_hole3, img_hole4, img_hole5, img_hole6, img_hole7, img_hole8)
+    }
 
     private val springAnimationX: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.X).apply {
@@ -126,8 +131,16 @@ class MainActivity : AppCompatActivity() {
         val ballCenterX = img_ball.x + img_ball.width / 2
         val ballCenterY = img_ball.y + img_ball.height / 2
 
-        if ((ballCenterX >= img_droid.x && ballCenterX <= img_droid.x + img_droid.width) &&
-            (ballCenterY >= img_droid.y && ballCenterY <= img_droid.y + img_droid.height)) {
+        holes.any{ isEnteringHole(it, ballCenterX, ballCenterY) }
+    }
+
+    private fun isEnteringHole(
+        hold: ImageView,
+        ballCenterX: Float,
+        ballCenterY: Float
+    ): Boolean {
+        if ((ballCenterX >= hold.x && ballCenterX <= hold.x + hold.width) &&
+            (ballCenterY >= hold.y && ballCenterY <= hold.y + hold.height)) {
 
             isEnding = true
             endAllPhysicAnimation()
@@ -137,8 +150,8 @@ class MainActivity : AppCompatActivity() {
                     .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
                     .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
                         ObjectAnimator.ofPropertyValuesHolder(img_ball,
-                            PropertyValuesHolder.ofFloat(View.X, img_droid.x),
-                            PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
+                            PropertyValuesHolder.ofFloat(View.X, hold.x),
+                            PropertyValuesHolder.ofFloat(View.Y, hold.y)))
 
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
@@ -147,7 +160,10 @@ class MainActivity : AppCompatActivity() {
                 })
 
             }.start()
+
+            return true
         }
+        return false
     }
 
     private fun resetBall() {
@@ -164,16 +180,13 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         }.start()
-
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
-
         override fun onDown(e: MotionEvent?): Boolean {
             stopAnimation = false
             return true
         }
-
         override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
             if (isAnimationRunning()) return false
             flingAnimationX.setStartVelocity(velocityX)
