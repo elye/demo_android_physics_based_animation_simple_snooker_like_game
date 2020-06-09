@@ -3,7 +3,6 @@ package com.elyeproj.animationphysics
 import android.animation.*
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -69,7 +68,6 @@ class MainActivity : AppCompatActivity() {
                 startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
             }
             addUpdateListener { animation, value, velocity ->
-                Log.d("Elisha", "flingAnimationY")
                 endCheck()
             }
         }
