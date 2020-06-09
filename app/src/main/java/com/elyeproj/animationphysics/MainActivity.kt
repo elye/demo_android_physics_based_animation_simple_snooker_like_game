@@ -3,6 +3,7 @@ package com.elyeproj.animationphysics
 import android.animation.*
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -18,7 +19,13 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val DEFAULT_FRICTION = 1.1f
+        private const val BREAK_FRICTION = 5f
+        private const val VELOCITY_THRESHOLD = 30
     }
+
+    // To flag stop animation so spring animation don't
+    // get trigger after ball has enter hole
+    private var stopAnimation = false
 
     private val springForce: SpringForce
     get() {
@@ -34,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     private val springAnimationX: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.X).apply {
             addUpdateListener { animation, value, velocity ->
-                endCheck()
+                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("springAnimationX $velocity")
             }
         }
     }
@@ -42,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     private val springAnimationY: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.Y).apply {
             addUpdateListener { animation, value, velocity ->
-                endCheck()
+                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("springAnimationY $velocity")
             }
         }
     }
@@ -55,7 +62,7 @@ class MainActivity : AppCompatActivity() {
                 startStringAnimation(velocity, springAnimationX, springForce, maxWidth)
             }
             addUpdateListener { animation, value, velocity ->
-                endCheck()
+                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("flingAnimationX $velocity")
             }
         }
     }
@@ -68,14 +75,15 @@ class MainActivity : AppCompatActivity() {
                 startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
             }
             addUpdateListener { animation, value, velocity ->
-                endCheck()
+                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("flingAnimationY $velocity")
             }
         }
     }
 
     private fun startStringAnimation(velocity: Float, springAnimation: SpringAnimation,
                                      springForce: SpringForce, max: Float) {
-        if (abs(velocity) > 0) {
+        if (abs(velocity) > 0 && !stopAnimation) {
+            Log.d("Elye", "Start spring")
             springAnimation
                 .setSpring(springForce.setFinalPosition(
                     if (velocity > 0) max else 0f))
@@ -86,7 +94,7 @@ class MainActivity : AppCompatActivity() {
 
     var isEnding = false
 
-    private fun endCheck() {
+    private fun endCheck(msg: String) {
         if (isEnding) return
 
         val ballCenterX = img_ball.x + img_ball.width / 2
@@ -108,7 +116,7 @@ class MainActivity : AppCompatActivity() {
 
                 addListener(object: AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
-                        resetBall()
+                        resetBall(msg)
                     }
                 })
 
@@ -116,21 +124,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun resetBall() {
+    private fun resetBall(msg: String) {
+        Log.d("Elye", "resetBall $msg")
+
         img_ball.translationX = 0f
         img_ball.translationY = 0f
         img_ball.scaleX = 1f
         img_ball.scaleY = 1f
         flingAnimationX.friction = DEFAULT_FRICTION
         flingAnimationY.friction = DEFAULT_FRICTION
-        ObjectAnimator.ofFloat(img_ball, View.ALPHA, 0f, 1f).start()
+        ObjectAnimator.ofFloat(img_ball, View.ALPHA, 0f, 1f).apply {
+            addListener(object : AnimatorListenerAdapter(){
+                override fun onAnimationEnd(animation: Animator?) {
+                    Log.d("Elye", "Appear ended")
+                    isEnding = false
+                }
+            })
+        }.start()
 
-        isEnding = false
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
 
         override fun onDown(e: MotionEvent?): Boolean {
+            stopAnimation = false
             return true
         }
 
@@ -160,10 +177,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endAllPhysicAnimation() {
+        Log.d("Elye", "endAllPhysicAnimation")
         springAnimationX.cancel()
         springAnimationY.cancel()
-        flingAnimationY.friction = 5f
-        flingAnimationX.friction = 5f
+        flingAnimationY.friction = BREAK_FRICTION
+        flingAnimationX.friction = BREAK_FRICTION
+        stopAnimation = true
     }
 
     internal fun isAnimationRunning() = (springAnimationX.isRunning || springAnimationY.isRunning
