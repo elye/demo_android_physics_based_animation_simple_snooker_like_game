@@ -1,17 +1,12 @@
 package com.elyeproj.animationphysics
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
+import android.animation.*
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.AccelerateInterpolator
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.FlingAnimation
@@ -21,6 +16,10 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val DEFAULT_FRICTION = 1.1f
+    }
 
     private val springForce: SpringForce
     get() {
@@ -34,9 +33,7 @@ class MainActivity : AppCompatActivity() {
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
 
     private val springAnimationX: SpringAnimation by lazy {
-        SpringAnimation(img_ball, DynamicAnimation.X).addEndListener { animation, canceled, value, velocity ->
-            endCheck()
-        }.apply {
+        SpringAnimation(img_ball, DynamicAnimation.X).apply {
             addUpdateListener { animation, value, velocity ->
                 endCheck()
             }
@@ -44,9 +41,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val springAnimationY: SpringAnimation by lazy {
-        SpringAnimation(img_ball, DynamicAnimation.Y).addEndListener { animation, canceled, value, velocity ->
-            endCheck()
-        }.apply {
+        SpringAnimation(img_ball, DynamicAnimation.Y).apply {
             addUpdateListener { animation, value, velocity ->
                 endCheck()
             }
@@ -54,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val flingAnimationX: FlingAnimation by lazy {
-        FlingAnimation(img_ball, DynamicAnimation.X).setFriction(1.1f).apply {
+        FlingAnimation(img_ball, DynamicAnimation.X).setFriction(DEFAULT_FRICTION).apply {
             setMinValue(0f)
             setMaxValue(maxWidth)
             addEndListener { animation, canceled, value, velocity ->
@@ -67,13 +62,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val flingAnimationY: FlingAnimation by lazy {
-        FlingAnimation(img_ball, DynamicAnimation.Y).setFriction(1.1f).apply {
+        FlingAnimation(img_ball, DynamicAnimation.Y).setFriction(DEFAULT_FRICTION).apply {
             setMinValue(0f)
             setMaxValue(maxHeight)
             addEndListener { animation, canceled, value, velocity ->
                 startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
             }
             addUpdateListener { animation, value, velocity ->
+                Log.d("Elisha", "flingAnimationY")
                 endCheck()
             }
         }
@@ -87,37 +83,51 @@ class MainActivity : AppCompatActivity() {
                     if (velocity > 0) max else 0f))
                 .setStartVelocity(velocity)
                 .start()
-        } else {
-            endCheck()
         }
     }
 
     var isEnding = false
 
     private fun endCheck() {
-        //if (isAnimationRunning()) return
         if (isEnding) return
 
-        if (((img_ball.x >= img_droid.x && img_ball.x <= img_droid.x + img_droid.width) ||
-                (img_ball.x + img_ball.width >= img_droid.x && img_ball.x + img_ball.width <= img_droid.x + img_droid.width)) &&
-            ((img_ball.y >= img_droid.y && img_ball.y <= img_droid.y + img_droid.height) ||
-                (img_ball.y + img_ball.height >= img_droid.y && img_ball.y + img_ball.height <= img_droid.y + img_droid.height))) {
+        val ballCenterX = img_ball.x + img_ball.width / 2
+        val ballCenterY = img_ball.y + img_ball.height / 2
 
-            Log.d("Elisha", "I am here")
+        if ((ballCenterX >= img_droid.x && ballCenterX <= img_droid.x + img_droid.width) &&
+            (ballCenterY >= img_droid.y && ballCenterY <= img_droid.y + img_droid.height)) {
+
             isEnding = true
             endAllPhysicAnimation()
-
 
             AnimatorSet().apply {
                 play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
                     .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
                     .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
-                    ObjectAnimator.ofPropertyValuesHolder(img_ball,
-                        PropertyValuesHolder.ofFloat(View.X, img_droid.x),
-                        PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
+                        ObjectAnimator.ofPropertyValuesHolder(img_ball,
+                            PropertyValuesHolder.ofFloat(View.X, img_droid.x),
+                            PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
+
+                addListener(object: AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator?) {
+                        resetBall()
+                    }
+                })
+
             }.start()
         }
+    }
 
+    private fun resetBall() {
+        img_ball.translationX = 0f
+        img_ball.translationY = 0f
+        img_ball.scaleX = 1f
+        img_ball.scaleY = 1f
+        flingAnimationX.friction = DEFAULT_FRICTION
+        flingAnimationY.friction = DEFAULT_FRICTION
+        ObjectAnimator.ofFloat(img_ball, View.ALPHA, 0f, 1f).start()
+
+        isEnding = false
     }
 
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
@@ -157,7 +167,6 @@ class MainActivity : AppCompatActivity() {
         flingAnimationY.friction = 5f
         flingAnimationX.friction = 5f
     }
-
 
     internal fun isAnimationRunning() = (springAnimationX.isRunning || springAnimationY.isRunning
         || flingAnimationX.isRunning || flingAnimationY.isRunning)
