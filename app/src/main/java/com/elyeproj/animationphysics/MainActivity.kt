@@ -7,6 +7,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.FlingAnimation
@@ -131,7 +132,9 @@ class MainActivity : AppCompatActivity() {
         val ballCenterX = img_ball.x + img_ball.width / 2
         val ballCenterY = img_ball.y + img_ball.height / 2
 
-        holes.any{ isEnteringHole(it, ballCenterX, ballCenterY) }
+        if (holes.any{ isEnteringHole(it, ballCenterX, ballCenterY) }) {
+            Toast.makeText(this, "Congratulation!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun isEnteringHole(
