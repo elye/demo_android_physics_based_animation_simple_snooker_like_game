@@ -3,7 +3,6 @@ package com.elyeproj.animationphysics
 import android.animation.*
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
             addUpdateListener { animation, value, velocity ->
                 velocitySpringY = velocity
                 if (isSlowEnoughToEnterHole())
-                    endCheck("springAnimationX $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
+                    endCheck()
             }
         }
     }
@@ -64,7 +63,7 @@ class MainActivity : AppCompatActivity() {
             addUpdateListener { animation, value, velocity ->
                 velocitySpringX = velocity
                 if (isSlowEnoughToEnterHole())
-                    endCheck("springAnimationY  $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
+                    endCheck()
             }
         }
     }
@@ -80,7 +79,7 @@ class MainActivity : AppCompatActivity() {
             addUpdateListener { animation, value, velocity ->
                 velocityFlingX = velocity
                 if (isSlowEnoughToEnterHole())
-                    endCheck("flingAnimationX $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
+                    endCheck()
             }
         }
     }
@@ -96,13 +95,12 @@ class MainActivity : AppCompatActivity() {
             addUpdateListener { animation, value, velocity ->
                 velocityFlingY = velocity
                 if (isSlowEnoughToEnterHole())
-                    endCheck("flingAnimationY $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
+                    endCheck()
             }
         }
     }
 
     private fun isSlowEnoughToEnterHole(): Boolean {
-        Log.d("Elye", "check $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
         return abs(velocityFlingY) < VELOCITY_THRESHOLD &&
             abs(velocityFlingX) < VELOCITY_THRESHOLD &&
             abs(velocitySpringY) < VELOCITY_THRESHOLD &&
@@ -112,7 +110,6 @@ class MainActivity : AppCompatActivity() {
     private fun startStringAnimation(velocity: Float, springAnimation: SpringAnimation,
                                      springForce: SpringForce, max: Float) {
         if (abs(velocity) > 0 && !stopAnimation) {
-            Log.d("Elye", "Start spring")
             springAnimation
                 .setSpring(springForce.setFinalPosition(
                     if (velocity > 0) max else 0f))
@@ -123,7 +120,7 @@ class MainActivity : AppCompatActivity() {
 
     var isEnding = false
 
-    private fun endCheck(msg: String) {
+    private fun endCheck() {
         if (isEnding) return
 
         val ballCenterX = img_ball.x + img_ball.width / 2
@@ -145,7 +142,7 @@ class MainActivity : AppCompatActivity() {
 
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
-                        resetBall(msg)
+                        resetBall()
                     }
                 })
 
@@ -153,9 +150,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun resetBall(msg: String) {
-        Log.d("Elye", "resetBall $msg")
-
+    private fun resetBall() {
         img_ball.translationX = 0f
         img_ball.translationY = 0f
         img_ball.scaleX = 1f
@@ -165,7 +160,6 @@ class MainActivity : AppCompatActivity() {
         ObjectAnimator.ofFloat(img_ball, View.ALPHA, 0f, 1f).apply {
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator?) {
-                    Log.d("Elye", "Appear ended")
                     isEnding = false
                 }
             })
@@ -206,7 +200,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endAllPhysicAnimation() {
-        Log.d("Elye", "endAllPhysicAnimation")
         springAnimationX.cancel()
         springAnimationY.cancel()
         flingAnimationY.friction = BREAK_FRICTION
