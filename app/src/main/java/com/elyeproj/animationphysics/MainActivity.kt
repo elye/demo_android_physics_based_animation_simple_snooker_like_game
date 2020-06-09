@@ -20,36 +20,51 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val DEFAULT_FRICTION = 1.1f
         private const val BREAK_FRICTION = 5f
-        private const val VELOCITY_THRESHOLD = 30
+        private const val VELOCITY_THRESHOLD = 300
     }
+
+    private var velocityFlingX = 0f
+    private var velocityFlingY = 0f
+    private var velocitySpringX = 0f
+    private var velocitySpringY = 0f
 
     // To flag stop animation so spring animation don't
     // get trigger after ball has enter hole
     private var stopAnimation = false
 
     private val springForce: SpringForce
-    get() {
-        return SpringForce(0f).apply {
-            stiffness = SpringForce.STIFFNESS_LOW
-            dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
+        get() {
+            return SpringForce(0f).apply {
+                stiffness = SpringForce.STIFFNESS_LOW
+                dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
+            }
         }
-    }
 
     private val maxWidth by lazy { container.width.toFloat() - img_ball.width }
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
 
     private val springAnimationX: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.X).apply {
+            addEndListener { animation, canceled, value, velocity ->
+                velocitySpringY = 0f
+            }
             addUpdateListener { animation, value, velocity ->
-                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("springAnimationX $velocity")
+                velocitySpringY = velocity
+                if (isSlowEnoughToEnterHole())
+                    endCheck("springAnimationX $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
             }
         }
     }
 
     private val springAnimationY: SpringAnimation by lazy {
         SpringAnimation(img_ball, DynamicAnimation.Y).apply {
+            addEndListener { animation, canceled, value, velocity ->
+                velocitySpringX = 0f
+            }
             addUpdateListener { animation, value, velocity ->
-                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("springAnimationY $velocity")
+                velocitySpringX = velocity
+                if (isSlowEnoughToEnterHole())
+                    endCheck("springAnimationY  $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
             }
         }
     }
@@ -59,10 +74,13 @@ class MainActivity : AppCompatActivity() {
             setMinValue(0f)
             setMaxValue(maxWidth)
             addEndListener { animation, canceled, value, velocity ->
+                velocityFlingX = 0f
                 startStringAnimation(velocity, springAnimationX, springForce, maxWidth)
             }
             addUpdateListener { animation, value, velocity ->
-                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("flingAnimationX $velocity")
+                velocityFlingX = velocity
+                if (isSlowEnoughToEnterHole())
+                    endCheck("flingAnimationX $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
             }
         }
     }
@@ -72,12 +90,23 @@ class MainActivity : AppCompatActivity() {
             setMinValue(0f)
             setMaxValue(maxHeight)
             addEndListener { animation, canceled, value, velocity ->
+                velocityFlingY = 0f
                 startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
             }
             addUpdateListener { animation, value, velocity ->
-                if (abs(velocity) < VELOCITY_THRESHOLD) endCheck("flingAnimationY $velocity")
+                velocityFlingY = velocity
+                if (isSlowEnoughToEnterHole())
+                    endCheck("flingAnimationY $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
             }
         }
+    }
+
+    private fun isSlowEnoughToEnterHole(): Boolean {
+        Log.d("Elye", "check $velocitySpringX $velocitySpringY $velocityFlingX $velocityFlingY")
+        return abs(velocityFlingY) < VELOCITY_THRESHOLD &&
+            abs(velocityFlingX) < VELOCITY_THRESHOLD &&
+            abs(velocitySpringY) < VELOCITY_THRESHOLD &&
+            abs(velocitySpringX) < VELOCITY_THRESHOLD
     }
 
     private fun startStringAnimation(velocity: Float, springAnimation: SpringAnimation,
@@ -114,7 +143,7 @@ class MainActivity : AppCompatActivity() {
                             PropertyValuesHolder.ofFloat(View.X, img_droid.x),
                             PropertyValuesHolder.ofFloat(View.Y, img_droid.y)))
 
-                addListener(object: AnimatorListenerAdapter() {
+                addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
                         resetBall(msg)
                     }
@@ -134,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         flingAnimationX.friction = DEFAULT_FRICTION
         flingAnimationY.friction = DEFAULT_FRICTION
         ObjectAnimator.ofFloat(img_ball, View.ALPHA, 0f, 1f).apply {
-            addListener(object : AnimatorListenerAdapter(){
+            addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator?) {
                     Log.d("Elye", "Appear ended")
                     isEnding = false
