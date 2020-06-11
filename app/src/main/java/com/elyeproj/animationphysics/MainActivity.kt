@@ -32,13 +32,16 @@ class MainActivity : AppCompatActivity() {
     // To flag stop animation so spring animation don't
     // get trigger after ball has enter hole
     private var stopAnimation = false
+    private var isEnding = false
+
+    private val gestureDetector by lazy {
+        GestureDetector(this, gestureListener)
+    }
 
     private val springForce: SpringForce
-        get() {
-            return SpringForce(0f).apply {
-                stiffness = SpringForce.STIFFNESS_LOW
-                dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
-            }
+        get() = SpringForce(0f).apply {
+            stiffness = SpringForce.STIFFNESS_LOW
+            dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
         }
 
     private val maxWidth by lazy { container.width.toFloat() - img_ball.width }
@@ -49,57 +52,59 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val springAnimationX: SpringAnimation by lazy {
-        SpringAnimation(img_ball, DynamicAnimation.X).apply {
-            addEndListener { animation, canceled, value, velocity ->
-                velocitySpringY = 0f
-            }
-            addUpdateListener { animation, value, velocity ->
-                velocitySpringY = velocity
-                if (isSlowEnoughToEnterHole())
-                    endCheck()
-            }
-        }
+        instantiateSpringAnimation(DynamicAnimation.X) { value -> velocitySpringX = value }
     }
 
     private val springAnimationY: SpringAnimation by lazy {
-        SpringAnimation(img_ball, DynamicAnimation.Y).apply {
-            addEndListener { animation, canceled, value, velocity ->
-                velocitySpringX = 0f
-            }
-            addUpdateListener { animation, value, velocity ->
-                velocitySpringX = velocity
-                if (isSlowEnoughToEnterHole())
-                    endCheck()
-            }
-        }
+        instantiateSpringAnimation(DynamicAnimation.Y) { value -> velocitySpringY = value }
     }
 
     private val flingAnimationX: FlingAnimation by lazy {
-        FlingAnimation(img_ball, DynamicAnimation.X).setFriction(DEFAULT_FRICTION).apply {
-            setMinValue(0f)
-            setMaxValue(maxWidth)
-            addEndListener { animation, canceled, value, velocity ->
-                velocityFlingX = 0f
-                startStringAnimation(velocity, springAnimationX, springForce, maxWidth)
-            }
-            addUpdateListener { animation, value, velocity ->
-                velocityFlingX = velocity
+        instantiateFlingAnimation(maxWidth, DynamicAnimation.X, springAnimationX)
+            { value -> velocityFlingX = value }
+    }
+
+    private val flingAnimationY: FlingAnimation by lazy {
+        instantiateFlingAnimation(maxHeight, DynamicAnimation.Y, springAnimationY)
+            { value -> velocityFlingY = value }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        img_ball.setOnTouchListener { view, motionEvent ->
+            gestureDetector.onTouchEvent(motionEvent)
+            true
+        }
+    }
+
+    private fun instantiateSpringAnimation(
+        animationType: DynamicAnimation.ViewProperty?,
+        resetVelocity: (Float) -> Unit
+    ): SpringAnimation {
+        return SpringAnimation(img_ball, animationType).apply {
+            addEndListener { _, _, _, _ -> resetVelocity(0f) }
+            addUpdateListener { _, _, velocity ->
+                resetVelocity(velocity)
                 if (isSlowEnoughToEnterHole())
                     endCheck()
             }
         }
     }
 
-    private val flingAnimationY: FlingAnimation by lazy {
-        FlingAnimation(img_ball, DynamicAnimation.Y).setFriction(DEFAULT_FRICTION).apply {
+    private fun instantiateFlingAnimation(max: Float, animationType: DynamicAnimation.ViewProperty,
+        springAnimation: SpringAnimation, resetVelocity: (Float) -> Unit): FlingAnimation {
+        return FlingAnimation(img_ball, animationType).setFriction(DEFAULT_FRICTION).apply {
             setMinValue(0f)
-            setMaxValue(maxHeight)
-            addEndListener { animation, canceled, value, velocity ->
-                velocityFlingY = 0f
-                startStringAnimation(velocity, springAnimationY, springForce, maxHeight)
+            setMaxValue(max)
+            addEndListener { _, _, _, velocity ->
+                resetVelocity(0f)
+                startStringAnimation(velocity, springAnimation, springForce, max)
             }
-            addUpdateListener { animation, value, velocity ->
-                velocityFlingY = velocity
+            addUpdateListener { _, _, velocity ->
+                resetVelocity(velocity)
                 if (isSlowEnoughToEnterHole())
                     endCheck()
             }
@@ -107,24 +112,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isSlowEnoughToEnterHole(): Boolean {
-        return abs(velocityFlingY) < VELOCITY_THRESHOLD &&
-            abs(velocityFlingX) < VELOCITY_THRESHOLD &&
-            abs(velocitySpringY) < VELOCITY_THRESHOLD &&
-            abs(velocitySpringX) < VELOCITY_THRESHOLD
+        return abs(velocityFlingY) < VELOCITY_THRESHOLD && abs(velocityFlingX) < VELOCITY_THRESHOLD &&
+                abs(velocitySpringY) < VELOCITY_THRESHOLD && abs(velocitySpringX) < VELOCITY_THRESHOLD
     }
 
-    private fun startStringAnimation(velocity: Float, springAnimation: SpringAnimation,
-                                     springForce: SpringForce, max: Float) {
+    private fun startStringAnimation(
+        velocity: Float, springAnimation: SpringAnimation, springForce: SpringForce, max: Float) {
         if (abs(velocity) > 0 && !stopAnimation) {
             springAnimation
-                .setSpring(springForce.setFinalPosition(
-                    if (velocity > 0) max else 0f))
+                .setSpring(springForce.setFinalPosition(if (velocity > 0) max else 0f))
                 .setStartVelocity(velocity)
                 .start()
         }
     }
 
-    var isEnding = false
 
     private fun endCheck() {
         if (isEnding) return
@@ -132,44 +133,44 @@ class MainActivity : AppCompatActivity() {
         val ballCenterX = img_ball.x + img_ball.width / 2
         val ballCenterY = img_ball.y + img_ball.height / 2
 
-        if (holes.any{ isEnteringHole(it, ballCenterX, ballCenterY) }) {
+        if (holes.any { isEnteringHole(it, ballCenterX, ballCenterY) }) {
             Toast.makeText(this, "Congratulation!", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun isEnteringHole(
-        hold: ImageView,
-        ballCenterX: Float,
-        ballCenterY: Float
-    ): Boolean {
-        if ((ballCenterX >= hold.x && ballCenterX <= hold.x + hold.width) &&
-            (ballCenterY >= hold.y && ballCenterY <= hold.y + hold.height)) {
-
+    private fun isEnteringHole(hold: ImageView, ballCenterX: Float, ballCenterY: Float): Boolean {
+        if (isHittingTarget(ballCenterX, hold, ballCenterY)) {
             isEnding = true
             endAllPhysicAnimation()
-
-            AnimatorSet().apply {
-                play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
-                    .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
-                    .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
-                        ObjectAnimator.ofPropertyValuesHolder(img_ball,
-                            PropertyValuesHolder.ofFloat(View.X, hold.x),
-                            PropertyValuesHolder.ofFloat(View.Y, hold.y)))
-
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator?) {
-                        resetBall()
-                    }
-                })
-
-            }.start()
-
+            animateBallIntoHole(hold)
             return true
         }
         return false
     }
 
-    private fun resetBall() {
+    private fun isHittingTarget(ballCenterX: Float, hold: ImageView, ballCenterY: Float) =
+        (ballCenterX >= hold.x && ballCenterX <= hold.x + hold.width) &&
+                (ballCenterY >= hold.y && ballCenterY <= hold.y + hold.height)
+
+    private fun animateBallIntoHole(hold: ImageView) {
+        AnimatorSet().apply {
+            play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
+                .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
+                .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
+                    ObjectAnimator.ofPropertyValuesHolder(img_ball,
+                        PropertyValuesHolder.ofFloat(View.X, hold.x),
+                        PropertyValuesHolder.ofFloat(View.Y, hold.y)
+                    )
+                )
+
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator?) { reappearBall() }
+            })
+
+        }.start()
+    }
+
+    private fun reappearBall() {
         img_ball.translationX = 0f
         img_ball.translationY = 0f
         img_ball.scaleX = 1f
@@ -190,28 +191,19 @@ class MainActivity : AppCompatActivity() {
             stopAnimation = false
             return true
         }
-        override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
+
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent?,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
             if (isAnimationRunning()) return false
             flingAnimationX.setStartVelocity(velocityX)
             flingAnimationY.setStartVelocity(velocityY)
             flingAnimationX.start()
             flingAnimationY.start()
             return true
-        }
-    }
-
-    private val gestureDetector by lazy {
-        GestureDetector(this, gestureListener)
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        img_ball.setOnTouchListener { view, motionEvent ->
-            gestureDetector.onTouchEvent(motionEvent)
-            true
         }
     }
 
@@ -224,5 +216,5 @@ class MainActivity : AppCompatActivity() {
     }
 
     internal fun isAnimationRunning() = (springAnimationX.isRunning || springAnimationY.isRunning
-        || flingAnimationX.isRunning || flingAnimationY.isRunning)
+            || flingAnimationX.isRunning || flingAnimationY.isRunning)
 }
