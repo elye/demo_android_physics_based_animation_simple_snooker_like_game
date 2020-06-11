@@ -38,6 +38,21 @@ class MainActivity : AppCompatActivity() {
         GestureDetector(this, gestureListener)
     }
 
+    private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent?): Boolean {
+            stopAnimation = false
+            return true
+        }
+
+        override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float)
+                : Boolean {
+            if (isAnimationRunning()) return false
+            flingAnimationX.setStartVelocity(velocityX).start()
+            flingAnimationY.setStartVelocity(velocityY).start()
+            return true
+        }
+    }
+
     private val springForce: SpringForce
         get() = SpringForce(0f).apply {
             stiffness = SpringForce.STIFFNESS_LOW
@@ -81,8 +96,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun instantiateSpringAnimation(
-        animationType: DynamicAnimation.ViewProperty?,
-        resetVelocity: (Float) -> Unit
+        animationType: DynamicAnimation.ViewProperty?, resetVelocity: (Float) -> Unit
     ): SpringAnimation {
         return SpringAnimation(img_ball, animationType).apply {
             addEndListener { _, _, _, _ -> resetVelocity(0f) }
@@ -184,27 +198,6 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         }.start()
-    }
-
-    private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
-        override fun onDown(e: MotionEvent?): Boolean {
-            stopAnimation = false
-            return true
-        }
-
-        override fun onFling(
-            e1: MotionEvent?,
-            e2: MotionEvent?,
-            velocityX: Float,
-            velocityY: Float
-        ): Boolean {
-            if (isAnimationRunning()) return false
-            flingAnimationX.setStartVelocity(velocityX)
-            flingAnimationY.setStartVelocity(velocityY)
-            flingAnimationX.start()
-            flingAnimationY.start()
-            return true
-        }
     }
 
     private fun endAllPhysicAnimation() {
