@@ -63,7 +63,16 @@ class MainActivity : AppCompatActivity() {
     private val maxHeight by lazy { container.height.toFloat() - img_ball.height }
 
     private val holes by lazy {
-        listOf(img_hole1, img_hole2, img_hole3, img_hole4, img_hole5, img_hole6, img_hole7, img_hole8)
+        listOf(
+            img_hole1,
+            img_hole2,
+            img_hole3,
+            img_hole4,
+            img_hole5,
+            img_hole6,
+            img_hole7,
+            img_hole8
+        )
     }
 
     private val springAnimationX: SpringAnimation by lazy {
@@ -76,12 +85,12 @@ class MainActivity : AppCompatActivity() {
 
     private val flingAnimationX: FlingAnimation by lazy {
         instantiateFlingAnimation(maxWidth, DynamicAnimation.X, springAnimationX)
-            { value -> velocityFlingX = value }
+        { value -> velocityFlingX = value }
     }
 
     private val flingAnimationY: FlingAnimation by lazy {
         instantiateFlingAnimation(maxHeight, DynamicAnimation.Y, springAnimationY)
-            { value -> velocityFlingY = value }
+        { value -> velocityFlingY = value }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -108,8 +117,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun instantiateFlingAnimation(max: Float, animationType: DynamicAnimation.ViewProperty,
-        springAnimation: SpringAnimation, resetVelocity: (Float) -> Unit): FlingAnimation {
+    private fun instantiateFlingAnimation(
+        max: Float, animationType: DynamicAnimation.ViewProperty,
+        springAnimation: SpringAnimation, resetVelocity: (Float) -> Unit
+    ): FlingAnimation {
         return FlingAnimation(img_ball, animationType).setFriction(DEFAULT_FRICTION).apply {
             setMinValue(0f)
             setMaxValue(max)
@@ -131,7 +142,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startStringAnimation(
-        velocity: Float, springAnimation: SpringAnimation, springForce: SpringForce, max: Float) {
+        velocity: Float, springAnimation: SpringAnimation, springForce: SpringForce, max: Float
+    ) {
         if (abs(velocity) > 0 && !stopAnimation) {
             springAnimation
                 .setSpring(springForce.setFinalPosition(if (velocity > 0) max else 0f))
@@ -139,8 +151,7 @@ class MainActivity : AppCompatActivity() {
                 .start()
         }
     }
-
-
+    
     private fun endCheck() {
         if (isEnding) return
 
@@ -162,23 +173,31 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
-    private fun isHittingTarget(ballCenterX: Float, hold: ImageView, ballCenterY: Float) =
-        (ballCenterX >= hold.x && ballCenterX <= hold.x + hold.width) &&
-                (ballCenterY >= hold.y && ballCenterY <= hold.y + hold.height)
+    private fun isHittingTarget(ballCenterX: Float, hole: ImageView, ballCenterY: Float) =
+        (ballCenterX >= hole.x && ballCenterX <= hole.x + hole.width) &&
+                (ballCenterY >= hole.y && ballCenterY <= hole.y + hole.height)
 
-    private fun animateBallIntoHole(hold: ImageView) {
+    private fun animateBallIntoHole(hole: ImageView) {
         AnimatorSet().apply {
-            play(ObjectAnimator.ofFloat(img_ball, View.ALPHA, 1f, 0f))
-                .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_X, 1f, 0.5f))
-                .with(ObjectAnimator.ofFloat(img_ball, View.SCALE_Y, 1f, 0.5f)).after(
-                    ObjectAnimator.ofPropertyValuesHolder(img_ball,
-                        PropertyValuesHolder.ofFloat(View.X, hold.x),
-                        PropertyValuesHolder.ofFloat(View.Y, hold.y)
-                    )
+            play(
+                ObjectAnimator.ofPropertyValuesHolder(
+                    img_ball,
+                    PropertyValuesHolder.ofFloat(View.ALPHA, 1f, 0f),
+                    PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 0.5f),
+                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 0.5f)
                 )
+            ).after(
+                ObjectAnimator.ofPropertyValuesHolder(
+                    img_ball,
+                    PropertyValuesHolder.ofFloat(View.X, hole.x),
+                    PropertyValuesHolder.ofFloat(View.Y, hole.y)
+                )
+            )
 
             addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator?) { reappearBall() }
+                override fun onAnimationEnd(animation: Animator?) {
+                    reappearBall()
+                }
             })
 
         }.start()
